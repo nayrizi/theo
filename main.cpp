@@ -25,7 +25,6 @@
 #include <stdint.h>
 #include <list>
 #include <string>
-#include <iostream>
 #include <boost/filesystem.hpp>
 
 namespace fs = boost::filesystem;
