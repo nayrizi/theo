@@ -51,15 +51,18 @@ struct Entry
     uint32_t nameLength; //strlen of filename plus the file extension
 } __attribute__((__packed__));
 
-
+// Utilities functions
 void          usage();
 int           init(const char* dir_name);
 inline void   panic(const char* msg);
 inline void   print_list();
 void          crush(const char* out_file_name);
 inline bool   check_stamp(const Stamp& stamp);
-uint32_t      extract_files_count(const char* title);
-void          extract(const char *title);
+
+// Extraction functions
+inline uint32_t     extract_files_count(const char* title);
+std::vector<String> extract_files_names(const char *title);
+void                extract(const char *title);
 
 
 int main(int argc, char *argv[])
@@ -76,9 +79,9 @@ int main(int argc, char *argv[])
     extern int optind;
     char *filename = nullptr;
     int c, err = 0;
-    bool cflag = false, xflag = false;
+    bool cflag = false, xflag = false, lflag = false;
     
-    while ( (c = getopt(argc, argv, "hc:x:")) != -1)
+    while ( (c = getopt(argc, argv, "hc:x:l:")) != -1)
     {
         switch (c)
         {
@@ -91,6 +94,10 @@ int main(int argc, char *argv[])
                 break;
             case 'x':
                 xflag = true;
+                filename = optarg;
+                break;
+            case 'l':
+                lflag = true;
                 filename = optarg;
                 break;
             case '?':
@@ -109,7 +116,14 @@ int main(int argc, char *argv[])
         extract_files_count(filename);
         extract(filename);
     }
-
+    
+    if (lflag)
+    {
+        auto files = extract_files_names(filename);
+        for (auto element: files) {
+            printf("\t->%s\n", element.c_str());
+        }
+    }
     return 0;
 }
 
@@ -170,7 +184,7 @@ inline void print_list()
     }
 }
 
-uint32_t extract_files_count(const char* title)
+inline uint32_t extract_files_count(const char* title)
 {
     FILE* in = fopen(title, "r");
     
@@ -309,6 +323,54 @@ void extract(const char *title)
     fclose(in);
 }
 
+std::vector<String> extract_files_names(const char *title)
+{
+    std::vector<String> names;
+    names.reserve(extract_files_count(title));
+    
+    FILE* in = fopen(title, "rb");
+    
+    if (in == nullptr)
+    {
+        printf("Couldn't access %s\n", title);
+        exit(EXIT_FAILURE);
+    }
+    
+    Stamp stamp;
+    
+    memset(&stamp, 0, sizeof(Stamp));
+    fread(&stamp, sizeof(Stamp), 1, in);
+
+    if (!check_stamp(stamp))
+    {
+        panic("Unknown file format!");
+    }
+    
+    for (auto i = 0; i < stamp.files_count; i++)
+    {
+        Entry entry;
+        memset(&entry, 0, sizeof(Entry));
+        
+        fread(&entry, sizeof(Entry), 1, in);
+        
+        byte *title = new byte[entry.nameLength + 1];
+        
+        for (auto j = 0; j < entry.nameLength; j++)
+        {
+            fread(title + j, sizeof(byte), 1, in);
+        }
+        title[entry.nameLength] = '\0';
+        String tmp = String(reinterpret_cast<const char *>(title));
+        names.push_back(tmp);
+        
+        fseek(in, entry.size, SEEK_CUR);
+
+        delete[] title;
+    }
+    
+    fclose(in);
+    return names;
+}
 void usage()
 {
     printf("Theo 1.0 - Muhammad Emara <m.a.emara@live.com>\n");
@@ -317,5 +379,6 @@ void usage()
     printf("theo [option] [argument]\n");
     printf("  -c [output]       Crushing mode (Archiving)\n");
     printf("  -x [target]       Extraction mode\n");
+    printf("  -l [target]       List files in archive\n");
     exit(EXIT_SUCCESS);
 }
