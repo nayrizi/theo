@@ -459,8 +459,10 @@ void usage()
     printf("A mini file archiver\n\n");
     printf("Usage:\n");
     printf("theo [option] [argument]\n");
+    printf("  -h                Print this usage help\n");
     printf("  -c [output]       Crushing mode (Archiving)\n");
     printf("  -x [target]       Extraction mode\n");
     printf("  -l [target]       List files in archive\n");
+    printf("  -i [target]       Extract specific file from archive\n");
     exit(EXIT_SUCCESS);
 }
